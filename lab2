@@ -1,0 +1,162 @@
+#include <linux/module.h>
+#include <linux/init.h>
+#include <linux/kernel.h>
+#include <linux/slab.h>
+#include <linux/list.h>
+#include <linux/random.h>
+#include <linux/string.h>
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Student");
+MODULE_DESCRIPTION("LAB2: linked list of students (Practice 1 & 2)");
+MODULE_VERSION("1.2");
+
+#define STUDENT_NAME_LEN 16
+#define N_STUDENTS 5
+
+struct student {
+    char name[STUDENT_NAME_LEN];
+    int chi, math, eng;
+    int total, avg;
+    struct list_head list;
+};
+
+static LIST_HEAD(student_list);
+
+
+static int rand_0_100(void)
+{
+    unsigned int r;
+    get_random_bytes(&r, sizeof(r));
+    return r % 101;
+}
+
+
+static void create_students(void)
+{
+    int i;
+    const char *names[N_STUDENTS] = {"Alice","Bob","Charlie","David","Eve"};
+    
+    for (i = 0; i < N_STUDENTS; i++) {
+        struct student *s = kmalloc(sizeof(*s), GFP_KERNEL);
+        if (!s) return;
+        
+        snprintf(s->name, STUDENT_NAME_LEN, "%s", names[i]);
+        s->chi = rand_0_100();
+        s->math = rand_0_100();
+        s->eng = rand_0_100();
+        s->total = s->chi + s->math + s->eng;
+        s->avg = s->total / 3;
+        
+        INIT_LIST_HEAD(&s->list);
+        list_add_tail(&s->list, &student_list);
+    }
+}
+
+
+static void print_forward(const char *title)
+{
+    struct student *s;
+    pr_info("%s\n", title);
+    list_for_each_entry(s, &student_list, list) {
+        pr_info("Name: %s, C:%d M:%d E:%d Total:%d Avg:%d\n",
+            s->name, s->chi, s->math, s->eng, s->total, s->avg);
+    }
+}
+
+
+static void print_reverse(const char *title)
+{
+    struct student *s;
+    pr_info("%s\n", title);
+    list_for_each_entry_reverse(s, &student_list, list) {
+        pr_info("Name: %s, C:%d M:%d E:%d Total:%d Avg:%d\n",
+            s->name, s->chi, s->math, s->eng, s->total, s->avg);
+    }
+}
+
+
+static void delete_lowest_avg(void)
+{
+    struct student *s, *tmp, *lowest = NULL;
+    
+    
+    list_for_each_entry(s, &student_list, list) {
+        if (!lowest || s->avg < lowest->avg) {
+            lowest = s;
+        }
+    }
+    
+    if (lowest) {
+        pr_info("Deleting student with lowest avg: %s (Avg:%d)\n", 
+                lowest->name, lowest->avg);
+        list_del(&lowest->list);
+        kfree(lowest);
+    }
+}
+
+
+static void insert_after_highest(void)
+{
+    struct student *s, *highest = NULL, *frank;
+    
+    list_for_each_entry(s, &student_list, list) {
+        if (!highest || s->avg > highest->avg) {
+            highest = s;
+        }
+    }
+    
+    if (!highest) return;
+    
+    pr_info("Found student with highest avg: %s (Avg:%d)\n", 
+            highest->name, highest->avg);
+    
+   
+    frank = kmalloc(sizeof(*frank), GFP_KERNEL);
+    if (!frank) return;
+    
+    snprintf(frank->name, STUDENT_NAME_LEN, "Frank");
+    frank->chi = 90;
+    frank->math = 95;
+    frank->eng = 92;
+    frank->total = frank->chi + frank->math + frank->eng;
+    frank->avg = frank->total / 3;
+    
+    INIT_LIST_HEAD(&frank->list);
+    
+    
+    list_add(&frank->list, &highest->list);
+    pr_info("Inserted Frank after %s (C:90 M:95 E:92 Total:277 Avg:92)\n", 
+            highest->name);
+}
+
+static int __init lab2_init(void)
+{
+    pr_info("=== Lab2 Module Init ===\n");
+    
+    create_students();
+    
+    
+    print_forward("[Forward List]");
+    print_reverse("[Reverse List]");
+    
+    
+    delete_lowest_avg();
+    insert_after_highest();
+    print_forward("[Final List]");
+    
+    return 0;
+}
+
+static void __exit lab2_exit(void)
+{
+    struct student *s, *tmp;
+    list_for_each_entry_safe(s, tmp, &student_list, list) {
+        list_del(&s->list);
+        kfree(s);
+    }
+    pr_info("Module exit.\n");
+}
+
+module_init(lab2_init);
+module_exit(lab2_exit);
