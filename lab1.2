@@ -1,0 +1,48 @@
+#include <linux/module.h>
+#include <linux/init.h>
+#include <linux/moduleparam.h>
+#include <linux/kernel.h>
+#include <linux/string.h>
+
+
+static char *username = "guest";
+static char *password = "1234";
+
+module_param(username, charp, S_IRUGO);
+MODULE_PARM_DESC(username, "Username for login");
+
+module_param(password, charp, S_IRUGO);
+MODULE_PARM_DESC(password, "Password for login");
+
+
+#define CORRECT_USERNAME "admin"
+#define CORRECT_PASSWORD "os123"
+
+
+static int __init lab2_init(void)
+{
+    
+    if (strcmp(username, CORRECT_USERNAME) == 0 && strcmp(password, CORRECT_PASSWORD) == 0) {
+        
+        printk(KERN_INFO "Welcome %s! Login success.\n", username);
+    } else {
+        
+        printk(KERN_ERR "Login failed. Please check your credentials.\n");
+    }
+    
+    return 0;
+}
+
+
+static void __exit lab2_exit(void)
+{
+    printk(KERN_INFO "Module exit. Goodbye %s.\n", username);
+}
+
+module_init(lab2_init);
+module_exit(lab2_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Student");
+MODULE_DESCRIPTION("A login system kernel module");
+MODULE_VERSION("1.0");
