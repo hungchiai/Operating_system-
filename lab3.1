@@ -1,0 +1,53 @@
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/sched/signal.h>  
+#include <linux/kernel.h>
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("YourName");
+MODULE_DESCRIPTION("LAB3-1: List user processes");
+
+static int __init simple_init(void)
+{
+    struct task_struct *task;
+
+    printk(KERN_INFO "=== User Process List ===\n");
+
+    for_each_process(task) {
+        
+        if (task->mm != NULL) {
+            const char *policy_name;
+
+            switch (task->policy) {
+                case SCHED_NORMAL: policy_name = "SCHED_NORMAL (一般)"; break;
+                case SCHED_FIFO: policy_name = "SCHED_FIFO (即時行程 FIFO)"; break;
+                case SCHED_RR: policy_name = "SCHED_RR (即時行程 RR)"; break;
+                case SCHED_BATCH: policy_name = "SCHED_BATCH (批次行程)"; break;
+                case SCHED_IDLE: policy_name = "SCHED_IDLE (閒置排程)"; break;
+                case SCHED_DEADLINE: policy_name = "SCHED_DEADLINE (期限驅動排程)"; break;
+                default: policy_name = "UNKNOWN"; break;
+            }
+
+            printk(KERN_INFO "State: %ld | Name: %s | PID: %d | Policy:0 %s | Parent: %s (PID: %d)\n",
+                task->state,
+                task->comm,
+                task->pid,
+                policy_name,
+                task->parent->comm,
+                task->parent->pid);
+        }
+    }
+
+    return 0;
+}
+
+static void __exit simple_exit(void)
+{
+    printk(KERN_INFO "=== Exit LAB3-1 ===\n");
+}
+
+module_init(simple_init);
+module_exit(simple_exit);
+
+
+
