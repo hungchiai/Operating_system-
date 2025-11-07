@@ -1,0 +1,76 @@
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+const char *files[] = {
+    "report.docx",
+    "image1.jpg",
+    "main.c",
+    "presentation.pptx",
+    "readme.txt",
+    "image2.png",
+    "code.cpp",
+    "notes.txt",
+};
+const int num_files = sizeof(files) / sizeof(files[0]);
+
+typedef struct {
+    const char *type_name;
+    const char *extensions[3];
+    int ext_count;
+} FileTypeParam;
+
+void *classify_files(void *arg) {
+    FileTypeParam *param = (FileTypeParam *)arg;
+   
+    for (int i = 0; i < num_files; i++) {
+        for (int j = 0; j < param->ext_count; j++) {
+            if (strstr(files[i], param->extensions[j]) != NULL) {
+                printf("%s %s\n", param->type_name, files[i]);
+                break;
+            }
+        }
+    }
+   
+    pthread_exit(NULL);
+}
+
+int main() {
+    pthread_t thread_txt, thread_img, thread_code;
+   
+    printf("[Multithread] Start file classification...\n");
+   
+    // Define file type parameters
+    FileTypeParam txt_param = {
+        .type_name = "[TXT] Found:",
+        .extensions = {".txt"},
+        .ext_count = 1
+    };
+   
+    FileTypeParam img_param = {
+        .type_name = "[IMG] Found:",
+        .extensions = {".jpg", ".png"},
+        .ext_count = 2
+    };
+   
+    FileTypeParam code_param = {
+        .type_name = "[CODE] Found:",
+        .extensions = {".c", ".cpp"},
+        .ext_count = 2
+    };
+   
+    // Create threads
+    pthread_create(&thread_txt, NULL, classify_files, &txt_param);
+    pthread_create(&thread_img, NULL, classify_files, &img_param);
+    pthread_create(&thread_code, NULL, classify_files, &code_param);
+   
+    // Wait for threads to complete
+    pthread_join(thread_txt, NULL);
+    pthread_join(thread_img, NULL);
+    pthread_join(thread_code, NULL);
+   
+    printf("[Main] All classification tasks completed.\n");
+   
+    return 0;
+}
