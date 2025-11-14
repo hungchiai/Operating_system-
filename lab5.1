@@ -1,0 +1,43 @@
+#include <stdio.h>
+
+typedef struct {
+    int id;
+    int pages;
+} Job;
+
+int main() {
+    Job queue[100];
+    int frontCount = 0;
+    int total = 0;
+
+    int pages[7] = {8, 2, 9, 3, 6, 1, 10};
+
+    for (int i = 0; i < 7; i++) {
+        int pid = i + 1;
+        int pg = pages[i];
+
+        printf("加入任務%d(%d頁):", pid, pg);
+
+        Job newJob = {pid, pg};
+
+        if (pg <= 5) {
+            for (int j = total; j > frontCount; j--) {
+                queue[j] = queue[j - 1];
+            }
+            queue[frontCount] = newJob;
+            frontCount++;
+            total++;
+        } else {
+            queue[total] = newJob;
+            total++;
+        }
+
+       
+        for (int k = 0; k < total; k++) {
+            printf("任務%d(%d頁) ", queue[k].id, queue[k].pages);
+        }
+        printf("\n");   
+    }
+
+    return 0;
+}
