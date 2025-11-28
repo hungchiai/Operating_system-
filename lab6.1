@@ -1,0 +1,113 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <time.h>
+
+#define N 7           
+#define K 2             
+#define THINKING 1
+#define EATING 0
+
+int state[N];
+int chopstick[N];
+int eat_count[N] = {0};
+
+pthread_mutex_t mutex;
+pthread_cond_t con_var;
+
+void test()
+{
+    for (int i = 0; i < N; i++) {
+        if (state[i] == EATING && state[(i + 1) % N] == EATING) {
+            return;
+        }
+    }
+}
+
+
+void pickup_chopstick(int id)
+{
+    printf("%d is picking\n", id);
+
+    pthread_mutex_lock(&mutex);
+
+    while (!(chopstick[id] && chopstick[(id + 1) % N])) {
+        pthread_cond_wait(&con_var, &mutex);
+    }
+
+   
+    chopstick[id] = 0;
+    chopstick[(id + 1) % N] = 0;
+    state[id] = EATING;
+
+    eat_count[id]++;
+
+    printf("The philosopher %d is eating (count = %d)\n", id, eat_count[id]);
+
+    pthread_mutex_unlock(&mutex);
+}
+
+
+void return_chopstick(int id)
+{
+    pthread_mutex_lock(&mutex);
+
+    chopstick[id] = 1;
+    chopstick[(id + 1) % N] = 1;
+    state[id] = THINKING;
+
+    pthread_cond_signal(&con_var);
+
+    pthread_mutex_unlock(&mutex);
+}
+
+
+void eating()
+{
+    int t = rand() % 2 + 1;
+    sleep(t);
+}
+
+void* at_table(void* arg)
+{
+    int id = (int)(intptr_t)arg;
+
+    while (eat_count[id] < K) {
+        pickup_chopstick(id);
+        eating();
+        return_chopstick(id);
+    }
+
+    return NULL;
+}
+
+int main()
+{
+    srand(time(NULL));
+
+    for (int i = 0; i < N; i++) {
+        chopstick[i] = 1;
+        state[i] = THINKING;
+    }
+
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&con_var, NULL);
+
+    pthread_t philosopher[N];
+
+    for (int i = 0; i < N; i++) {
+        pthread_create(&philosopher[i], NULL, at_table, (void*)(intptr_t)i);
+    }
+
+    for (int i = 0; i < N; i++) {
+        pthread_join(philosopher[i], NULL);
+    }
+
+    printf("\nSimulation finished (%d philosophers). Each target K = %d\n", N, K);
+    for (int i = 0; i < N; i++) {
+        printf("Philosopher %d total eats = %d\n", i, eat_count[i]);
+    }
+
+    return 0;
+}
