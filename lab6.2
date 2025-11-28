@@ -1,0 +1,151 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <time.h>
+
+#define N 7
+#define K 2
+#define THINKING 1
+#define EATING 0
+
+int state[N];
+int chopstick[N];
+int eat_count[N] = {0};
+
+pthread_mutex_t mutex;
+pthread_cond_t con_var;
+
+int phase = 0;   
+int running = 1;
+
+void print_state()
+{
+    printf("And the state of all philosopher\n\n");
+    for (int i = 0; i < N; i++) {
+        printf("philosopher %d is %d\n", i, state[i]);
+    }
+    printf("\n");
+}
+
+
+void* phase_switcher(void* arg)
+{
+    while (running) {
+        usleep(500000); 
+
+        pthread_mutex_lock(&mutex);
+        phase = 1 - phase;
+
+        
+        printf("\n---Phase switched: %s philosophers can try ---\n\n",
+            (phase == 0 ? "EVEN" : "ODD"));
+        printf("\n---Phase switched: %s philosophers can try ---\n\n",
+            (phase == 0 ? "EVEN" : "ODD"));
+        printf("\n---Phase switched: %s philosophers can try ---\n\n",
+            (phase == 0 ? "EVEN" : "ODD"));
+
+        pthread_cond_broadcast(&con_var);
+        pthread_mutex_unlock(&mutex);
+    }
+    return NULL;
+}
+
+
+void pickup_chopstick(int id)
+{
+    printf("%d is picking\n", id);
+
+    pthread_mutex_lock(&mutex);
+
+    while (1)
+    {
+        
+        if (id % 2 != phase) {
+            pthread_cond_wait(&con_var, &mutex);
+            continue;
+        }
+
+        
+        if (!(chopstick[id] && chopstick[(id + 1) % N])) {
+            pthread_cond_wait(&con_var, &mutex);
+            continue;
+        }
+
+        break; 
+    }
+
+    
+    chopstick[id] = 0;
+    chopstick[(id + 1) % N] = 0;
+    state[id] = EATING;
+    eat_count[id]++;
+
+    printf("The philosopher %d is eating\n", id);
+    print_state();
+
+    pthread_mutex_unlock(&mutex);
+}
+
+void return_chopstick(int id)
+{
+    pthread_mutex_lock(&mutex);
+
+    chopstick[id] = 1;
+    chopstick[(id + 1) % N] = 1;
+    state[id] = THINKING;
+
+    pthread_cond_broadcast(&con_var);
+    pthread_mutex_unlock(&mutex);
+}
+
+void eating()
+{
+    sleep(rand() % 2 + 1);
+}
+
+void* at_table(void* arg)
+{
+    int id = (int)(intptr_t)arg;
+
+    while (eat_count[id] < K) {
+        pickup_chopstick(id);
+        eating();
+        return_chopstick(id);
+    }
+
+    return NULL;
+}
+
+
+int main()
+{
+    srand(time(NULL));
+
+    for (int i = 0; i < N; i++) {
+        chopstick[i] = 1;
+        state[i] = THINKING;
+    }
+
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&con_var, NULL);
+
+    pthread_t philosopher[N];
+    pthread_t phase_thread;
+
+    pthread_create(&phase_thread, NULL, phase_switcher, NULL);
+
+    for (int i = 0; i < N; i++) {
+        pthread_create(&philosopher[i], NULL, at_table, (void*)(intptr_t)i);
+    }
+
+    for (int i = 0; i < N; i++) {
+        pthread_join(philosopher[i], NULL);
+    }
+
+    running = 0;
+    pthread_join(phase_thread, NULL);
+
+    printf("\nSimulation finished.\n");
+    return 0;
+}
